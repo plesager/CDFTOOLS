@@ -48,6 +48,8 @@ PROGRAM cdfmoc
 
   INTEGER(KIND=2), DIMENSION(:,:,:), ALLOCATABLE :: ibmask       !  nbasins x npiglo x npjglo
   INTEGER(KIND=2), DIMENSION(:,:), ALLOCATABLE :: ivmask         ! ivmask (used to mask e3v)
+  REAL(KIND=4), DIMENSION(:,:), ALLOCATABLE :: get_e3v
+  
   INTEGER(KIND=4)                             :: npglo, npatl, npinp, npinp0
   INTEGER(KIND=4)                             :: npind, nppac
   INTEGER(KIND=4)                             :: jbasin, jj, jk  ! dummy loop index
@@ -276,6 +278,7 @@ PROGRAM cdfmoc
   ALLOCATE ( dtim(npt) )
   ALLOCATE ( dmoc( nbasins, npjglo, npk   ) )
   ALLOCATE ( ivmask(npiglo, npjglo) )
+  ALLOCATE ( get_e3v(npiglo, npjglo) )
 
   IF ( ldec ) THEN 
      ALLOCATE ( iumask(npiglo, npjglo) )
@@ -332,8 +335,15 @@ PROGRAM cdfmoc
 
      IF ( it == jt ) THEN
         DO jk= 1, npk
-           ! save e3v masked with vmask as 3d array
-           e3v(:,:,jk) = get_e3v(jk,it)
+          ! save e3v masked with vmask as 3d array
+          ! e3v(:,:,jk) = get_e3v(jk,it)
+
+          ivmask(:,:) = getvar(cn_fmsk, cn_vmask, jk, npiglo, npjglo)
+          IF ( lfull ) THEN ; get_e3v(:,:) = e31d(jk)
+          ELSE              ; get_e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=it, ldiom=.NOT.lg_vvl )
+          ENDIF
+          e3v(:,:,jk) = get_e3v(:,:) * ivmask(:,:)
+
         END DO
      ENDIF
      ! --------------------------
@@ -563,27 +573,27 @@ PROGRAM cdfmoc
 
 CONTAINS
 
-  FUNCTION get_e3v(kk,kt)
-    !!---------------------------------------------------------------------
-    !!                  ***  FUNCTION get_e3  ***
-    !!
-    !! ** Purpose : Send back e3v at level kk selecting
-    !!              full step or partial step case
-    !!
-    !! ** Method  :  check for global flag lfull  
-    !!
-    !!----------------------------------------------------------------------
-    INTEGER(KIND=4), INTENT(in)  :: kk  ! level to work with
-    INTEGER(KIND=4), INTENT(in)  :: kt  ! time for reading e3v (vvl case)
-    REAL(KIND=4), DIMENSION(npiglo,npjglo) :: get_e3v
+  ! FUNCTION get_e3v(kk,kt)
+  !   !!---------------------------------------------------------------------
+  !   !!                  ***  FUNCTION get_e3  ***
+  !   !!
+  !   !! ** Purpose : Send back e3v at level kk selecting
+  !   !!              full step or partial step case
+  !   !!
+  !   !! ** Method  :  check for global flag lfull  
+  !   !!
+  !   !!----------------------------------------------------------------------
+  !   INTEGER(KIND=4), INTENT(in)  :: kk  ! level to work with
+  !   INTEGER(KIND=4), INTENT(in)  :: kt  ! time for reading e3v (vvl case)
+  !   REAL(KIND=4), DIMENSION(npiglo,npjglo) :: get_e3v
 
-    ivmask(:,:) = getvar(cn_fmsk, cn_vmask, jk, npiglo, npjglo)
-    IF ( lfull ) THEN ; get_e3v(:,:) = e31d(jk)
-    ELSE              ; get_e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=kt, ldiom=.NOT.lg_vvl )
-    ENDIF
-    get_e3v(:,:) = get_e3v(:,:) * ivmask(:,:)
+  !   ivmask(:,:) = getvar(cn_fmsk, cn_vmask, jk, npiglo, npjglo)
+  !   IF ( lfull ) THEN ; get_e3v(:,:) = e31d(jk)
+  !   ELSE              ; get_e3v(:,:) = getvar(cn_fe3v, cn_ve3v, jk, npiglo, npjglo, ktime=kt, ldiom=.NOT.lg_vvl )
+  !   ENDIF
+  !   get_e3v(:,:) = get_e3v(:,:) * ivmask(:,:)
 
-  END FUNCTION get_e3v
+  ! END FUNCTION get_e3v
 
   SUBROUTINE rapid_amoc
     !!---------------------------------------------------------------------
